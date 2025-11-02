@@ -1,60 +1,11 @@
 import { CohereClient } from "cohere-ai";
+import {
+  stripMarkdown,
+  generateRandomColors,
+  replaceLinksWithRandomSearches,
+} from "../lib/websiteUtils";
 
 export const dynamic = "force-dynamic";
-
-/**
- * Removes markdown formatting and converts to clean HTML
- * @param {string} content - The markdown content to strip
- * @returns {string} Clean HTML content without markdown syntax
- */
-function stripMarkdown(content: string): string {
-  let cleaned = content;
-
-  cleaned = cleaned.replace(/```[\s\S]*?```/g, "");
-  cleaned = cleaned.replace(/`([^`]+)`/g, "$1");
-  cleaned = cleaned.replace(/^#{1,6}\s+(.+)$/gm, "$1");
-  cleaned = cleaned.replace(/\*\*([^*]+)\*\*/g, "$1");
-  cleaned = cleaned.replace(/\*([^*]+)\*/g, "$1");
-  cleaned = cleaned.replace(/__([^_]+)__/g, "$1");
-  cleaned = cleaned.replace(/_([^_]+)_/g, "$1");
-  cleaned = cleaned.replace(/\[([^\]]+)\]\([^\)]+\)/g, "$1");
-  cleaned = cleaned.replace(/!\[([^\]]*)\]\([^\)]+\)/g, "");
-  cleaned = cleaned.replace(/^[\s]*[-*+]\s+(.+)$/gm, "$1");
-  cleaned = cleaned.replace(/^\d+\.\s+(.+)$/gm, "$1");
-  cleaned = cleaned.replace(/^>\s+(.+)$/gm, "$1");
-  cleaned = cleaned.replace(/^---$/gm, "");
-  cleaned = cleaned.replace(/^\*\*\*$/gm, "");
-
-  return cleaned.trim();
-}
-
-/**
- * Generates random colors for each page load
- * @returns {Object} Object containing color1, color2, color3, bgColor, and textColor
- */
-function generateRandomColors() {
-  const hue1 = Math.floor(Math.random() * 360);
-  const hue2 = Math.floor(Math.random() * 360);
-  const hue3 = Math.floor(Math.random() * 360);
-
-  const color1 = `hsl(${hue1}, ${50 + Math.random() * 30}%, ${
-    40 + Math.random() * 30
-  }%)`;
-  const color2 = `hsl(${hue2}, ${50 + Math.random() * 30}%, ${
-    40 + Math.random() * 30
-  }%)`;
-  const color3 = `hsl(${hue3}, ${50 + Math.random() * 30}%, ${
-    40 + Math.random() * 30
-  }%)`;
-  const bgColor = `hsl(${Math.floor(Math.random() * 360)}, ${
-    30 + Math.random() * 20
-  }%, ${85 + Math.random() * 10}%)`;
-  const textColor = `hsl(${Math.floor(Math.random() * 360)}, ${
-    40 + Math.random() * 30
-  }%, ${20 + Math.random() * 15}%)`;
-
-  return { color1, color2, color3, bgColor, textColor };
-}
 
 /**
  * Array of predefined website prompts for random generation
@@ -213,7 +164,8 @@ export default async function Home() {
       "- Use creative layouts - sidebars, grids, asymmetric designs, or any unique arrangement\n" +
       "- Add colorful backgrounds, gradients, or patterns\n" +
       "- Make it feel like a real, complete website with its own unique visual identity\n" +
-      "- Be creative and make each generation completely different and unrelated to any previous content\n\n" +
+      "- Be creative and make each generation completely different and unrelated to any previous content\n" +
+      '- IMPORTANT: All links (anchor tags with href) must point to random Google search URLs. Use href="https://www.google.com/search?q=random+topic" format for all links\n\n' +
       "IMPORTANT: Output format must be pure HTML only. Use <style> tag for CSS. Do NOT include <html> or <body> tags - just the content with <style> tag and HTML elements. Absolutely NO markdown formatting.\n\n" +
       `Here are some suggested color themes you can use (but feel free to create your own): ${colors.color1}, ${colors.color2}, ${colors.color3}\n\n` +
       "Respond with ONLY HTML code - no explanations, no markdown, just pure HTML.";
@@ -230,6 +182,7 @@ export default async function Home() {
     const rawContent = response.text || "No content generated.";
 
     generatedContent = stripMarkdown(rawContent);
+    generatedContent = replaceLinksWithRandomSearches(generatedContent);
   } catch (error) {
     errorMessage =
       error instanceof Error ? error.message : "Failed to generate content";
