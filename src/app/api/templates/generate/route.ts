@@ -124,7 +124,10 @@ export async function POST(request: NextRequest) {
     console.error("Background template generation failed:", error);
   });
 
-  return NextResponse.json({ success: true, message: "Template generation started" });
+  return NextResponse.json({
+    success: true,
+    message: "Template generation started",
+  });
 }
 
 /**
@@ -135,8 +138,10 @@ async function generateAndSaveTemplate(): Promise<void> {
   const apiKey = process.env.API_KEY;
   const apiModel = process.env.API_MODEL || "openai/gpt-4.1-nano";
 
-  if (!apiKey) {
-    throw new Error("API Key Missing");
+  if (!apiKey || apiKey.trim() === "") {
+    throw new Error(
+      "API Key Missing. Please set the API_KEY environment variable."
+    );
   }
 
   try {
@@ -189,9 +194,23 @@ async function generateAndSaveTemplate(): Promise<void> {
     );
 
     if (!response.ok) {
-      throw new Error(
-        `OpenRouter API error: ${response.status} ${response.statusText}`
-      );
+      const errorText = await response.text();
+      let errorMessage = `OpenRouter API error: ${response.status} ${response.statusText}`;
+
+      if (response.status === 401) {
+        errorMessage =
+          "API Key is invalid or missing. Please check your API_KEY environment variable.";
+      } else if (errorText) {
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage =
+            errorData.error?.message || errorData.error || errorMessage;
+        } catch {
+          errorMessage = `${errorMessage}. ${errorText}`;
+        }
+      }
+
+      throw new Error(errorMessage);
     }
 
     const data = await response.json();
@@ -207,4 +226,3 @@ async function generateAndSaveTemplate(): Promise<void> {
     throw error;
   }
 }
-

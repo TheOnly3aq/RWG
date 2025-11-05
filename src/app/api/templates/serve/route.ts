@@ -120,8 +120,10 @@ async function generateHTML(): Promise<string> {
   const apiKey = process.env.API_KEY;
   const apiModel = process.env.API_MODEL || "openai/gpt-4.1-nano";
 
-  if (!apiKey) {
-    throw new Error("API Key Missing");
+  if (!apiKey || apiKey.trim() === "") {
+    throw new Error(
+      "API Key Missing. Please set the API_KEY environment variable."
+    );
   }
 
   const colors = generateRandomColors();
@@ -171,9 +173,23 @@ async function generateHTML(): Promise<string> {
   );
 
   if (!response.ok) {
-    throw new Error(
-      `OpenRouter API error: ${response.status} ${response.statusText}`
-    );
+    const errorText = await response.text();
+    let errorMessage = `OpenRouter API error: ${response.status} ${response.statusText}`;
+
+    if (response.status === 401) {
+      errorMessage =
+        "API Key is invalid or missing. Please check your API_KEY environment variable.";
+    } else if (errorText) {
+      try {
+        const errorData = JSON.parse(errorText);
+        errorMessage =
+          errorData.error?.message || errorData.error || errorMessage;
+      } catch {
+        errorMessage = `${errorMessage}. ${errorText}`;
+      }
+    }
+
+    throw new Error(errorMessage);
   }
 
   const data = await response.json();
@@ -203,7 +219,7 @@ export async function GET(request: NextRequest) {
     const seenIds: string[] = seenCookie ? JSON.parse(seenCookie.value) : [];
 
     // Try to get unseen template from database
-    let template = await getUnseenTemplate(seenIds);
+    const template = await getUnseenTemplate(seenIds);
     let templateId: string;
     let html: string;
 
