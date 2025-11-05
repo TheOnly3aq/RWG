@@ -16,9 +16,26 @@ function getPool(): Pool {
       throw new Error("DATABASE_URL environment variable is not set");
     }
 
+    const sslMode = connectionString.match(/sslmode=([^&]+)/)?.[1];
+    let sslConfig: boolean | { rejectUnauthorized: boolean } = false;
+
+    if (
+      sslMode === "require" ||
+      sslMode === "prefer" ||
+      sslMode === "verify-ca" ||
+      sslMode === "verify-full"
+    ) {
+      sslConfig = {
+        rejectUnauthorized:
+          sslMode !== "verify-full" && sslMode !== "verify-ca",
+      };
+    } else if (process.env.DATABASE_SSL === "true") {
+      sslConfig = { rejectUnauthorized: false };
+    }
+
     pool = new Pool({
       connectionString,
-      ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
+      ssl: sslConfig,
     });
   }
 
@@ -40,7 +57,6 @@ export async function initDatabase(): Promise<void> {
       )
     `);
 
-    // Create index on created_at for efficient cleanup queries
     await client.query(`
       CREATE INDEX IF NOT EXISTS idx_templates_created_at ON templates(created_at)
     `);
@@ -96,8 +112,6 @@ export async function saveTemplate(html: string): Promise<string> {
       "INSERT INTO templates (html) VALUES ($1) RETURNING id",
       [html]
     );
-
-    // Cleanup old templates if we exceed 300
     await cleanupOldTemplates();
 
     return result.rows[0].id;
