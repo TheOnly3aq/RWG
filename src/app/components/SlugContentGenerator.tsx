@@ -11,9 +11,6 @@ function LoadingSpinner() {
     <div className="flex min-h-screen items-center justify-center bg-zinc-50 dark:bg-black">
       <div className="flex flex-col items-center gap-4">
         <div className="h-12 w-12 animate-spin rounded-full border-4 border-zinc-200 border-t-zinc-600 dark:border-zinc-800 dark:border-t-zinc-400" />
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Generating your random website...
-        </p>
       </div>
     </div>
   );
